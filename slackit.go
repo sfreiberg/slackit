@@ -3,7 +3,10 @@ package slackit
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 )
 
 // Payload holds the information that will be sent to slack
@@ -14,7 +17,8 @@ type Payload struct {
 	Username  string `json:"username,omitempty"`
 }
 
-// PostMessage posts the payload to slack
+// PostMessage posts the payload to slack. It returns an error if the request
+// fails or slack responds with a non-2xx status code.
 func PostMessage(url string, p *Payload) error {
 	jsonPayload, err := json.Marshal(p)
 	if err != nil {
@@ -36,5 +40,12 @@ func post(req *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return resp.Body.Close()
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		// Slack explains the failure in the body, e.g. "invalid_payload".
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return fmt.Errorf("slackit: %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+	return nil
 }

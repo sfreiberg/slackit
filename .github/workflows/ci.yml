@@ -5,6 +5,9 @@ on:
     branches: [master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -26,6 +29,9 @@ jobs:
 
       - name: go vet
         run: go vet ./...
+
+      - name: modernize
+        run: go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@v0.52.0 -test ./...
 
       - name: go test
         run: go test -race ./...
